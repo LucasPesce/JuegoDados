@@ -1,0 +1,5 @@
+config,3,5
+Casino,La Casa,El Casino,15050
+Player1,Puno,VIP,8650
+Player2,Pdos,Experto,6400
+Player3,Ptres,Novato,9900
