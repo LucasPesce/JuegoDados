@@ -6,38 +6,28 @@ import java.util.List;
 public class JuegoDados {   
     private Dado dado;
     private Casino casino;
-    private boolean juegoTerminado; //  bandera para controlar si alguien quedó en 0
-    //////////////////////////////// CONSIGNA 3
+    private boolean juegoTerminado; 
     private int ultimoPozo;
 
     
-    //actualizarEstgadistica
     public JuegoDados(Casino casino) {
         this.dado = new Dado();
         this.casino = casino;
         this.juegoTerminado = false;
-        ////////////////// CONSIGNA 3
         this.ultimoPozo = 0;
     }
 
     public ResultadoRondaDTO jugarRonda(){        
         if (juegoTerminado) {
-            System.out.println("\n️ El juego ya ha finalizado. No se puede jugar más rondas.");
             return null;
         }        
         
         ArrayList<Jugador> jugadores = casino.getJugadores();
-        int pozo = 0;
-        
-        //====================================================================== consigna 3
+        int pozo = 0;        
         HashMap<Jugador, InfoTiroDTO> resultadosIndividuales = new HashMap<>();
-        //======================================================================
         HashMap<Jugador, Integer> resultados = new HashMap<>();
 
-        // Consigna 3: Habilidad Confusión - elección del jugador confundido
         Jugador jugadorConfundido = null;
-
-        // Obtener la instancia del JugadorCasino (asumiendo que hay uno)
         JugadorCasino jugadorCasino = null;
         for (Jugador j : jugadores) {
             if (j instanceof JugadorCasino) {
@@ -45,19 +35,12 @@ public class JuegoDados {
                 break;
             }
         }
-
-        // Ejecutar la habilidad de confundir del casino si existe
         if (jugadorCasino != null) {
             jugadorConfundido = jugadorCasino.seleccionarJugadorAConfundir(jugadores);            
             if (jugadorConfundido != null) {
-                System.out.println("¡El Casino confunde a " + jugadorConfundido.getNombreConTipo() + "!");
-                casino.registrarVictima(jugadorConfundido); // CONSIGNA 4: Registrar victima
+                casino.registrarVictima(jugadorConfundido); 
             }
         }
-        // Fin elección
-
-        System.out.println("\nApuestas y lanzamientos:");       
-        
         for (Jugador jugador : jugadores) {
             int apuesta = jugador.calcularApuesta();
             if (apuesta > jugador.getDinero()) apuesta = jugador.getDinero();
@@ -67,101 +50,69 @@ public class JuegoDados {
             int tiro1, tiro2, suma;
             boolean fueConfundido = jugador.equals(jugadorConfundido);
 
-            // Consigna 3: Se incorpora el tiro de dados cargados del jugadorCasino
             if (jugador instanceof JugadorCasino) {
-                  // El casino usa su método de dados cargados
                   tiro1 = ((JugadorCasino) jugador).tirarDadoCargado();
                   tiro2 = ((JugadorCasino) jugador).tirarDadoCargado();
                   casino.registrarUsoDadosCargados(); 
             } else {
-                  // Jugadores normales tiran dados comunes
                   tiro1 = dado.tirar();
                   tiro2 = dado.tirar();
             }
 
-            // Aplica la penalización si el jugador actual es el confundido
             if (fueConfundido) {
                 tiro1 = Math.max(1, tiro1 - 1);
                 tiro2 = Math.max(1, tiro2 - 1);
-                System.out.println(" -> ¡El efecto de la confusión reduce el puntaje de " + jugador.getNombreConTipo() + "!");
             }
             suma = tiro1 + tiro2;
-
-            System.out.println(jugador.getNombreConTipo() + " apostó $" + apuesta + " y sacó " + tiro1 + " + " + tiro2 + " = " + suma);
-
-            // Lógica del VIP si corresponde
-            if (jugador instanceof JugadorVIP vip) { // Usando pattern matching para más limpieza
+            if (jugador instanceof JugadorVIP vip) { 
                 if (vip.puedeRepetir() && suma < 8) {
-                    System.out.println("→ " + vip.getNombreConTipo() + " decide usar su re-roll...");
                     tiro1 = dado.tirar();
                     tiro2 = dado.tirar();
                     suma = tiro1 + tiro2; 
-                    System.out.println("  Nuevo tiro: " + tiro1 + " + " + tiro2 + " = " + suma);
                     vip.usarRepeticion();
                 }
             }
             casino.actualizarEstadisticas(apuesta, suma, jugador);
             resultados.put(jugador, suma);
-            //============================================================== CONSIGNA3
             resultadosIndividuales.put(jugador, new InfoTiroDTO(apuesta, tiro1, tiro2, suma, fueConfundido));
-            //============================================================== CONSIGNA3
      
-        } // <-- FIN DEL BUCLE for
+        } 
 
-        // Determinar puntaje más alto
         int maxPuntaje = resultados.values().stream().max(Integer::compare).orElse(0);
         ArrayList<Jugador> ganadores = new ArrayList<>();
         for (Jugador j : resultados.keySet()) {
             if (resultados.get(j) == maxPuntaje) ganadores.add(j);
         }
 
-        // Repartir pozo
         if (ganadores.isEmpty()) {
-            System.out.println("\nNo hay ganadores en esta ronda. El pozo se pierde.");
         } else {
             int premioPorJugador = pozo / ganadores.size();
-            System.out.println("\nGanador(es) de la ronda:");
             for (Jugador ganador : ganadores) {
                 ganador.ganar(premioPorJugador);
-                System.out.println("-> " + ganador.getNombreConTipo() + " gana $" + premioPorJugador);
             }
         }
-
-        // Mostrar estado de dinero de cada jugador al final de la ronda
-        System.out.println("\nEstado de dinero de los jugadores tras la ronda:");
-        for (Jugador j : jugadores) {
-            System.out.println(j.getNombreConTipo() + ": $" + j.getDinero());
-            
+        for (Jugador j : jugadores) {           
             if (j.getDinero() == 0) {
                 juegoTerminado = true;
-                System.out.println("\n️ El jugador " + j.getNombreConTipo() + " quedó sin dinero. El juego finaliza.");
                 break;
             }
         }
-
-        // Resetear re-roll VIP
         for (Jugador j : jugadores) if (j instanceof JugadorVIP) ((JugadorVIP) j).resetearRepeticion();
         
         if (juegoTerminado) {
             return null; //  el juego ya no sigue
         }
-
-
-        /////////////////////////////////////////////// CONSIGNA 3
         this.ultimoPozo = pozo;
         
         if (juegoTerminado) {
             return null;
         }
-        //////////////////////////////////////////////////////////////////
         return new ResultadoRondaDTO(ganadores, resultadosIndividuales);
     }
     
-    // <===== NUEVO MÉTODO GETTER ===== CONSGINA 3
     public int getUltimoPozo() {
         return ultimoPozo;
     }
-    // ===============================
     
     public boolean isJuegoTerminado() {
         return juegoTerminado;
@@ -181,11 +132,6 @@ public class JuegoDados {
         this.fueConfundido = fueConfundido;
     }
 }
-// =================================================================== CONSIGNA 3 - PANEL CENTRAL
-
-/**
- * DTO para empaquetar el resultado completo de una ronda.
- */
     public static class ResultadoRondaDTO {
     public final List<Jugador> ganadores;
     public final HashMap<Jugador, InfoTiroDTO> resultadosIndividuales;
@@ -194,9 +140,5 @@ public class JuegoDados {
         this.ganadores = ganadores;
         this.resultadosIndividuales = resultados;
     }
-}
-// ===================================================================
-
-
-    
+}   
 }

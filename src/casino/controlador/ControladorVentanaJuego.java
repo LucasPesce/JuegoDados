@@ -2,7 +2,6 @@ package casino.controlador;
 import casino.modelo.Casino;
 import casino.modelo.JuegoDados;
 import casino.modelo.Jugador;
-import casino.modelo.Reporte;
 import casino.vista.VentanaJuego;
 import casino.vista.VentanaPausa;
 import java.util.HashMap;
@@ -12,7 +11,8 @@ import casino.vista.VentanaConfiguracion;
 import java.util.ArrayList;
 import java.util.Comparator;
 import javax.swing.SwingUtilities;
-
+import casino.vista.VentanaReporteFinal;
+import casino.modelo.PartidaGuardadaDTO; 
 
 public class ControladorVentanaJuego {
     private Casino casino;
@@ -23,7 +23,6 @@ public class ControladorVentanaJuego {
     
     private List<String> historialDeJuego;
     
-    // Variables para controlar el estado del juego
     private int partidaActual;
     private int rondaActual;
     private int totalPartidas;
@@ -48,10 +47,10 @@ public class ControladorVentanaJuego {
         this.rondaActual = 1;
         
         casino.reiniciarEstadisticas();
+        casino.reiniciarVictoriasJugadores();
         this.juegoDados = new JuegoDados(casino);
         reiniciarContadorRondasPartida();
 
-        // Prepara la interfaz con los paneles de los jugadores
         SwingUtilities.invokeLater(() -> {
             vistaJuego.limpiarLog(); 
             vistaJuego.agregarAlLog(">>> ¡Nueva Partida Iniciada! <<<");
@@ -72,7 +71,6 @@ public class ControladorVentanaJuego {
         this.juegoDados = new JuegoDados(casino);
         reiniciarContadorRondasPartida();
 
-        // Prepara la interfaz con los paneles de los jugadores cargados
         SwingUtilities.invokeLater(() -> {
             vistaJuego.limpiarLog(); // <-- AÑADIR ESTA LÍNEA
             vistaJuego.agregarAlLog(">>> Partida Cargada Correctamente. <<<");            
@@ -83,24 +81,21 @@ public class ControladorVentanaJuego {
         vistaJuego.setVisible(true);
     }
     
-    private void configurarEventos() {
-        // ... (Tu código de configurarEventos es correcto y no necesita cambios) ...
-        // Lo incluyo aquí para que el archivo esté completo.
-        
+    private void configurarEventos() {       
         /* ============= BOTON AVANZAR  =============*/
         vistaJuego.getBtnAvanzar().addActionListener(e -> jugarSiguienteRonda());
         
         /* ============= MENU PARTIDA  =============*/
         vistaJuego.getMenuItemPausar().addActionListener(e -> pausarJuego());
         vistaJuego.getMenuItemGuardar().addActionListener(e -> {
-            casino.guardarPartida(this.totalPartidas, this.totalRondas);
+            casino.guardarPartida(this.totalPartidas, this.totalRondas, this.partidaActual, this.rondaActual);
             JOptionPane.showMessageDialog(vistaJuego, "Partida guardada correctamente.");
         });
 
         /* ============= MENU PAUSA  =============*/
         vistaPausa.getBtnVolver().addActionListener(e -> vistaPausa.dispose());
         vistaPausa.getBtnGuardarPausa().addActionListener(e -> {
-            casino.guardarPartida(this.totalPartidas, this.totalRondas);
+            casino.guardarPartida(this.totalPartidas, this.totalRondas, this.partidaActual, this.rondaActual);
             JOptionPane.showMessageDialog(vistaPausa, "Partida guardada.");
         });
         
@@ -208,12 +203,12 @@ public class ControladorVentanaJuego {
             vistaJuego.agregarAlLog("\nNadie ganó la ronda. El pozo se pierde.");
         } else {
             StringBuilder ganadoresStr = new StringBuilder();
-            for(Jugador g : resultadoRonda.ganadores){
-                ganadoresStr.append(g.getNombre()).append(", ");
+            for (Jugador ganador : resultadoRonda.ganadores) {
+                int rondasActuales = rondasGanadasEnPartida.getOrDefault(ganador, 0);
+                rondasGanadasEnPartida.put(ganador, rondasActuales + 1);
             }
-            ganadoresStr.setLength(ganadoresStr.length() - 2);
             vistaJuego.agregarAlLog("\nGanador(es) de la ronda: " + ganadoresStr.toString());
-        }
+        }   
 
 
         int pozoDeLaRonda = juegoDados.getUltimoPozo();
@@ -232,19 +227,13 @@ public class ControladorVentanaJuego {
     }
     
     private void actualizarInfoPartidaUI(int pozoActual) {
-        System.out.println(String.format("DEBUG UI: Actualizando a Partida=%d, Ronda=%d, Pozo=%d", partidaActual, rondaActual, pozoActual));
-        
         String textoPartida = String.format("Partida: %d / %d", partidaActual, totalPartidas);
-        vistaJuego.getLblPartidaActual().setText(textoPartida);
-        
+        vistaJuego.getLblPartidaActual().setText(textoPartida);        
         String textoRonda = String.format("Ronda: %d / %d", rondaActual, totalRondas);
-        vistaJuego.getLblRondaActual().setText(textoRonda);
-        
+        vistaJuego.getLblRondaActual().setText(textoRonda);        
         String textoPozo = String.format("Pozo: $%d", pozoActual);
-        vistaJuego.getLblPozoAcumulado().setText(textoPozo);
-        
-        vistaJuego.setTitle(String.format("Casino - Partida %d/%d | Ronda %d/%d", 
-                                          partidaActual, totalPartidas, rondaActual, totalRondas));
+        vistaJuego.getLblPozoAcumulado().setText(textoPozo);        
+        vistaJuego.setTitle(String.format("Casino - Partida %d/%d | Ronda %d/%d", partidaActual, totalPartidas, rondaActual, totalRondas));
     }
    
     private void finalizarPartida() {
@@ -275,35 +264,36 @@ public class ControladorVentanaJuego {
         }
     }
     
-    private void finalizarJuego(String motivo) {
-        JOptionPane.showMessageDialog(vistaJuego, "¡Juego Terminado! Motivo: " + motivo);
-        
+    private void finalizarJuego(String motivo) {   
         vistaJuego.getBtnAvanzar().setEnabled(false);
         vistaJuego.getMenuItemPausar().setEnabled(false);
         vistaJuego.getMenuItemGuardar().setEnabled(false);
-        
-        int partidasJugadas = (partidaActual > totalPartidas) ? totalPartidas : partidaActual - 1;
-        if (partidasJugadas < 1) partidasJugadas = 1; // Asegurar que sea al menos 1 si termina en la primera partida
-        
-        Reporte.generarReporteFinal(casino, partidasJugadas);
-        
-        casino.guardarPartida(this.totalPartidas, this.totalRondas);
-        System.out.println("Reporte final generado. Cierra esta ventana para volver a configurar.");
-        
-        Object[] options = {"Volver al Menú Principal"};
-        int result = JOptionPane.showOptionDialog(vistaJuego,
-                "¡Juego Terminado! Motivo: " + motivo + "\nEl reporte final ha sido generado en la consola.",
-                "Fin del Juego",
-                JOptionPane.DEFAULT_OPTION,
-                JOptionPane.INFORMATION_MESSAGE,
-                null,
-                options,
-                options[0]);
+        vistaJuego.setVisible(false);
 
-        if (result == 0 || result == JOptionPane.CLOSED_OPTION) {
-             vistaJuego.dispose();
-             vistaConfig.setVisible(true);
-        }
+        VentanaReporteFinal reporteDialog = new VentanaReporteFinal(vistaJuego, true);
+        reporteDialog.mostrarReporte(casino, historialDeJuego); 
+
+        vistaJuego.dispose();      
+        vistaConfig.setVisible(true); 
+    }
+    public void restaurarJuegoCargado(PartidaGuardadaDTO estadoCargado) {
+        this.totalPartidas = estadoCargado.getTotalPartidas();
+        this.totalRondas = estadoCargado.getTotalRondas();
+        this.partidaActual = estadoCargado.getPartidaActual();
+        this.rondaActual = estadoCargado.getRondaActual();
+        casino.reiniciarEstadisticas(); 
+        this.juegoDados = new JuegoDados(casino);
+        reiniciarContadorRondasPartida(); 
+
+        SwingUtilities.invokeLater(() -> {
+            vistaJuego.limpiarLog();
+            vistaJuego.agregarAlLog(">>> Partida Cargada Correctamente. Continuando... <<<");
+            vistaJuego.prepararInterfazJugadores(casino.getJugadores());
+
+            actualizarInfoPartidaUI(0); 
+        });
+
+        vistaJuego.setVisible(true);
     }
     
     private void pausarJuego() {
@@ -320,12 +310,20 @@ public class ControladorVentanaJuego {
     private Jugador determinarGanadorPartida() {
         Jugador ganador = null;
         int maxRondas = -1;
+
         for (Jugador j : rondasGanadasEnPartida.keySet()) {
             if (rondasGanadasEnPartida.get(j) > maxRondas) {
                 maxRondas = rondasGanadasEnPartida.get(j);
                 ganador = j;
+            } else if (rondasGanadasEnPartida.get(j) == maxRondas) {
+
             }
         }
-        return (ganador != null) ? casino.getJugadores().get(0) : ganador; // Corregido: devolver ganador, no el primero
+
+        if (ganador == null && !casino.getJugadores().isEmpty()) {
+            return casino.getJugadores().get(0);
+        }
+
+        return ganador;
     }
 }

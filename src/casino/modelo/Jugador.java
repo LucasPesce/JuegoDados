@@ -30,10 +30,6 @@ public abstract class Jugador {
 
     public void sumarVictoria() { partidasGanadas++; }
 
-/**
-     * Reinicia el contador de partidas ganadas a cero.
-     * Útil para cuando se inicia una nueva serie de partidas desde la interfaz.
-*/    
     public void resetearVictorias() {
         this.partidasGanadas = 0;
     }
@@ -48,17 +44,15 @@ public abstract class Jugador {
         if (cantidad > 0) {
             dinero -= cantidad;
             if (dinero < 0) {
-                dinero = 0; // No puede quedar en negativo
+                dinero = 0;
             }
         }
     }
 
-    // Método para mostrar nombre + tipo
     public String getNombreConTipo() {
         return nombre + " (" + obtenerTipoJugador() + ")";
     }
 
-    //Métodos abstractos que deben implementar las subclases
     public abstract int calcularApuesta();
 
     public abstract String obtenerTipoJugador();

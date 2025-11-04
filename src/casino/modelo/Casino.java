@@ -1,5 +1,4 @@
 package casino.modelo;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,30 +35,25 @@ public class Casino {
     public String getNombreJugadorMejorPuntaje() { return nombreJugadorMejorPuntaje; }
     public HashMap<String, Integer> getVictimasDeTrampas() { return victimasDeTrampas; }
 
-     /**
-     * Reinicia todas las estadísticas a sus valores iniciales.
-     * Es crucial llamar a este método antes de iniciar una nueva serie de partidas
-     * para evitar que los datos de la sesión anterior se acumulen.
-     */
      public void reiniciarEstadisticas() {
         this.mayorApuesta = 0;
         this.nombreJugadorMayorApuesta = "Sin registro";
         this.mejorPuntajeDados = 0;
         this.nombreJugadorMejorPuntaje = "Sin registro";
         this.conteoDadosCargados = 0;
-        this.victimasDeTrampas.clear(); // Limpia el mapa de víctimas
+        this.victimasDeTrampas.clear();
         this.cantPartidasTotal = 0;
-        
-        // También reiniciamos las victorias de cada jugador
+     }
+     
+    public void reiniciarVictoriasJugadores() {
         for (Jugador j : jugadores) {
             j.resetearVictorias(); 
         }
     }
      
-    public void guardarPartida(int totalPartidas, int totalRondas) {
+    public void guardarPartida(int totalPartidas, int totalRondas, int partidaActual, int rondaActual) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(ARCHIVO_GUARDADO))) {
-            // Escribimos una cabecera para que el archivo sea más legible
-            writer.write(String.format("config,%d,%d", totalPartidas, totalRondas));
+            writer.write(String.format("config,%d,%d,%d,%d", totalPartidas, totalRondas, partidaActual, rondaActual));
             writer.newLine();
             
             for (Jugador j : this.jugadores) {
@@ -67,51 +61,53 @@ public class Casino {
                         j.getNombre(),
                         j.getApodo(),
                         j.obtenerTipoJugador(),
-                        String.valueOf(j.getDinero())
+                        String.valueOf(j.getDinero()),
+                        String.valueOf(j.getPartidasGanadas()) 
                 );
                 writer.write(linea);
                 writer.newLine();
             }
-            System.out.println("Partida guardada correctamente en " + ARCHIVO_GUARDADO);
         } catch (IOException e) {
-            System.err.println("Error al guardar la partida: " + e.getMessage());
         }
     }   
-    /**
-     * Carga el estado del juego desde el archivo.
-     * @return Un objeto PartidaGuardadaDTO con los datos cargados.
-     * @throws IOException Si ocurre un error de lectura o el formato es inválido.
-     */
      public casino.modelo.PartidaGuardadaDTO cargarPartida() throws IOException, NumberFormatException {
         this.jugadores.clear();
 
         try (BufferedReader reader = new BufferedReader(new FileReader(ARCHIVO_GUARDADO))) {
-            // Limpiamos la lista de jugadores actual
-            this.jugadores.clear();
-            
-            // Leemos la primera línea (configuración)
+            this.jugadores.clear();            
             String lineaConfig = reader.readLine();
             if (lineaConfig == null || !lineaConfig.startsWith("config,")) {
             throw new IOException("Formato de archivo inválido: falta o es incorrecta la línea de configuración.");
             }
             
            String[] datosConfig = lineaConfig.split(",");
+           
+           if (datosConfig.length < 5) { // Ahora debe tener 5 campos (config + 4 valores)
+                throw new IOException("Línea de configuración incompleta.");
+            }
+           
            int totalPartidas = Integer.parseInt(datosConfig[1]);
            int totalRondas = Integer.parseInt(datosConfig[2]);
+           int partidaActual = Integer.parseInt(datosConfig[3]);           
+           int rondaActual = Integer.parseInt(datosConfig[4]);
 
-            // Leemos las líneas de los jugadores
             String lineaJugador;
             while ((lineaJugador = reader.readLine()) != null) {
                 String[] datos = lineaJugador.split(",");    
-                if (datos.length == 4) {
+                if (datos.length == 5) { // <-- AHORA COMPRUEBA 5 CAMPOS
                     String nombre = datos[0];
                     String apodo = datos[1];
                     String tipo = datos[2];
                     int dinero = Integer.parseInt(datos[3]);
+                    int victorias = Integer.parseInt(datos[4]); // <-- NUEVO
+
 
                     Jugador jugadorCargado = crearJugadorDesdeTipo(nombre, apodo, tipo);
                     if (jugadorCargado != null) {
                         jugadorCargado.setDinero(dinero);
+                        for (int i = 0; i < victorias; i++) {
+                            jugadorCargado.sumarVictoria();
+                        }
                         this.jugadores.add(jugadorCargado);
                     }
                 }
@@ -119,47 +115,24 @@ public class Casino {
             if (this.jugadores.isEmpty()) {
                 throw new IOException("No se cargó ningún jugador. Verifique el archivo.");
             }
-            // Devolvemos un DTO (Data Transfer Object) con toda la información
-            return new casino.modelo.PartidaGuardadaDTO(totalPartidas, totalRondas, this.jugadores);
+            return new PartidaGuardadaDTO(totalPartidas, totalRondas, partidaActual, rondaActual, this.jugadores);
 
         } catch (FileNotFoundException e) {
-            // Re-lanzamos la excepción para que el controlador la maneje
             throw new FileNotFoundException("No se encontró el archivo de partida guardada.");
         }
         
         
-    }
-    
+    }    
      
-     // <===== NUEVO MÉTODO ======================================   CONSIGNA 3 - PARTE2
-    /**
-     * Lee el contenido completo del archivo de historial.
-     * @return Un String con todo el contenido del archivo, o un string vacío si no existe.
-     * @throws IOException Si ocurre un error de lectura.
-     */
     public String leerHistorial() throws java.io.IOException {
         String nombreArchivo = "historial_partidas.txt";
         if (Files.exists(Paths.get(nombreArchivo))) {
-            // Lee todas las líneas y las une con un salto de línea.
             return String.join("\n", Files.readAllLines(Paths.get(nombreArchivo)));
         } else {
-            return ""; // Devuelve vacío si el archivo no existe
+            return ""; 
         }
     }
-     
-    // <===== NUEVO MÉTODO =========================================== 
-
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
+    
     private Jugador crearJugadorDesdeTipo(String nombre, String apodo, String tipo) {
         switch (tipo) {
             case "Novato": return new JugadorNovato(nombre, apodo, 0);
@@ -186,7 +159,7 @@ public class Casino {
     victimasDeTrampas.put(nombreVictima, conteoActual + 1);
 }
     public Jugador crearJugador(String nombre, String apodo, int tipo) {
-        int dineroInicial = 500; // Todos empiezan con $500
+        int dineroInicial = 500; 
         switch (tipo) {
             case 1 -> {
                 return new JugadorNovato(nombre, apodo, dineroInicial);
@@ -236,11 +209,6 @@ public class Casino {
         }
     }
     
-/* Guarda el historial de partidas en un archivo de texto llamado "historial_partidas.txt".
-     * Este archivo será leído por la clase Reporte para mostrar el historial.
-     * El archivo se sobreescribe en cada nueva ejecución del juego.
-     * @param historial La lista de strings que contiene el detalle de cada partida.     
-*/  
     public void guardarHistorial(List<String> historial) {
         String nombreArchivo = "historial_partidas.txt";
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(nombreArchivo, false))) { // false para sobreescribir
@@ -248,106 +216,8 @@ public class Casino {
                 writer.write(linea);
                 writer.newLine(); 
             }
-            System.out.println("Historial guardado correctamente en " + nombreArchivo);
         } catch (IOException e) {
             System.err.println("Error al guardar el historial en el archivo: " + e.getMessage());
         }
-    }
-    
-    
-    public List<String> jugar(int cantPartidas, int cantRondas) {
-    List<String> detalles = new ArrayList<>();
-
-    for (int i = 1; i <= cantPartidas; i++) {
-        System.out.println("\n=== Partida " + i + " ===");
-
-        HashMap<Jugador, Integer> rondasGanadas = new HashMap<>();
-        for (Jugador j : jugadores) {
-            rondasGanadas.put(j, 0);
-        }
-
-        JuegoDados juego = new JuegoDados(this);
-
-        for (int r = 1; r <= cantRondas; r++) {
-            if (!juego.isJuegoTerminado()) {
-                System.out.println("\n---- Ronda " + r);
-
-                // =======================================================
-                //      CAMBIO CLAVE AQUÍ
-                // =======================================================
-                // 1. Ahora obtenemos el DTO completo.
-                JuegoDados.ResultadoRondaDTO resultadoRonda = juego.jugarRonda();
-
-                // 2. Verificamos si el DTO es nulo (fin del juego).
-                if (resultadoRonda == null) {
-                    System.out.println("️ Juego finalizado anticipadamente en la ronda " + r + " de la partida " + i);
-                    cantPartidasTotal = i;
-                    return detalles;
-                }
-                
-                // 3. Extraemos la lista de ganadores desde el DTO.
-                List<Jugador> ganadoresRonda = resultadoRonda.ganadores;
-                // =======================================================
-                
-                // El resto de la lógica sigue igual, usando la lista que extrajimos.
-                for (Jugador g : ganadoresRonda) {
-                    rondasGanadas.put(g, rondasGanadas.get(g) + 1);
-                }
-            }
-        }
-
-        // Determinar ganador de la partida según rondas ganadas
-        Jugador ganadorPartida = jugadores.get(0);
-        int maxRondas = rondasGanadas.get(ganadorPartida);
-        for (Jugador j : jugadores) {
-            if (rondasGanadas.get(j) > maxRondas) {
-                ganadorPartida = j;
-                maxRondas = rondasGanadas.get(j);
-            }
-        }
-        ganadorPartida.sumarVictoria();
-
-        // Construir detalle
-        StringBuilder detalle = new StringBuilder();
-        detalle.append("PARTIDA #").append(i).append(" - Jugadores: ");
-        for (int j = 0; j < jugadores.size(); j++) {
-            detalle.append(jugadores.get(j).getNombre());
-            if (j < jugadores.size() - 1) detalle.append(", ");
-        }
-        detalle.append(" | Ganador: ").append(ganadorPartida.getNombreConTipo());
-        detalle.append(" | Rondas ganadas: ").append(maxRondas).append(" de ").append(cantRondas);
-
-        detalles.add(detalle.toString());
-        
-        cantPartidasTotal++;
-    }
-
-    return detalles;
-}
-   
-    
-    public int getCantPartidas() { return this.cantPartidasTotal; }
-    public class PartidaGuardadaDTO {
-        private final int totalPartidas;
-        private final int totalRondas;
-        private final ArrayList<Jugador> jugadores;
-
-        public PartidaGuardadaDTO(int totalPartidas, int totalRondas, ArrayList<Jugador> jugadores) {
-            this.totalPartidas = totalPartidas;
-            this.totalRondas = totalRondas;
-            this.jugadores = jugadores;
-        }
-
-        public int getTotalPartidas() {
-            return totalPartidas;
-        }
-
-        public int getTotalRondas() {
-            return totalRondas;
-        }
-
-        public ArrayList<Jugador> getJugadores() {
-            return jugadores;
-        }
-    }
+    }      
 }

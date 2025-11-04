@@ -8,6 +8,7 @@ import javax.swing.DefaultListModel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import java.io.IOException;
+import casino.modelo.PartidaGuardadaDTO; 
 
 public class ControladorJuego {
     private Casino casino;
@@ -39,7 +40,7 @@ public class ControladorJuego {
 
             boolean existeCasino = casino.getJugadores().stream().anyMatch(j -> j instanceof JugadorCasino);
             if (!existeCasino) {
-                int dineroInicial = 500; // valor por defecto o el que tengas configurado
+                int dineroInicial = 500; 
                 JugadorCasino jugadorCasino = new JugadorCasino("Casino", dineroInicial);
                 casino.agregarJugador(jugadorCasino);
                 System.out.println("Se agregó automáticamente el jugador 'Casino' (La Casa).");
@@ -92,14 +93,14 @@ public class ControladorJuego {
             try {
                 int dinero;
                 if (dineroStr.isEmpty()) {
-                    dinero = 500; // valor por defecto
-                    ventanaConfig.getTxtDineroInicial().setText("500"); // mostrarlo en el campo
+                    dinero = 500; 
+                    ventanaConfig.getTxtDineroInicial().setText("500"); 
                 } else {
                     dinero = Integer.parseInt(dineroStr);
                 }
                 int cantRondas;
                 if (rondasStr.isEmpty()) {
-                    cantRondas = 3; // Valor por defecto si el campo está vacío
+                    cantRondas = 3; 
                     ventanaConfig.getTxtRondasPartidas().setText("3");
                 } else {
                     cantRondas = Integer.parseInt(rondasStr);
@@ -126,7 +127,6 @@ public class ControladorJuego {
                 
         /* ============= JUGAR  =============*/
         ventanaConfig.getBtnJugar().addActionListener(e -> {
-            // 1. Validaciones
            int cantJugadores = casino.getJugadores().size();
             if (cantJugadores < 2 || cantJugadores > 4) {
                 JOptionPane.showMessageDialog(ventanaConfig,
@@ -141,19 +141,14 @@ public class ControladorJuego {
                 return;
             }
             
-            // 2. Leer valores confirmados 
             int cantPartidas = getCantidadPartidasSeleccionada();
             int dineroInicial = Integer.parseInt(ventanaConfig.getTxtDineroInicial().getText().trim());
-            int cantRondas = Integer.parseInt(ventanaConfig.getTxtRondasPartidas().getText().trim());
+            int cantRondas = Integer.parseInt(ventanaConfig.getTxtRondasPartidas().getText().trim());    
             
-            
-            
-            // 3. Inicializar dinero de cada jugador
             for (Jugador j : casino.getJugadores()) {
                 j.setDinero(dineroInicial);
             }
 
-            // 4. Lógica de la trampa
             boolean trampaActiva = ventanaConfig.getChkTrampa().isSelected();
             JugadorCasino jugadorCasino = null;
             for (Jugador j : casino.getJugadores()) {
@@ -180,7 +175,7 @@ public class ControladorJuego {
         /* ============= CARGAR PARTIDA  =============*/
         ventanaConfig.getBtnCargarPartida().addActionListener(e -> {
            try {
-                casino.modelo.PartidaGuardadaDTO partidaGuardada = casino.cargarPartida();
+               PartidaGuardadaDTO partidaGuardada = casino.cargarPartida();
 
                 JOptionPane.showMessageDialog(ventanaConfig, "Partida cargada exitosamente.");
 
@@ -188,11 +183,8 @@ public class ControladorJuego {
                 VentanaJuego ventanaJuego = new VentanaJuego();
                 ControladorVentanaJuego controladorVentanaJuego = new ControladorVentanaJuego(casino, ventanaJuego, ventanaConfig);
 
-                // Accedemos a los campos públicos del DTO simplificado
-                controladorVentanaJuego.continuarJuegoCargado(
-                    partidaGuardada.getTotalPartidas(), 
-                    partidaGuardada.getTotalRondas()   
-                );
+                controladorVentanaJuego.restaurarJuegoCargado(partidaGuardada);
+
                 actualizarListaJugadores();
 
             } catch (IOException | NumberFormatException ex) {
@@ -205,19 +197,15 @@ public class ControladorJuego {
     }
     
     private int getCantidadPartidasSeleccionada() {
-        // Asumimos que Op2 corresponde a 3 partidas.
         if (ventanaConfig.getOp2().isSelected()) {
             return 3;
         }
-        // Asumimos que Op3 corresponde a 5 partidas.
         if (ventanaConfig.getOp3().isSelected()) {
             return 5;
         }
-        // Por defecto, o si Op1 está seleccionado, devuelve 2.
         return 2; 
     }
 
-    // Actualiza la lista de jugadores en la vista
     private void actualizarListaJugadores() {
         DefaultListModel<String> modelo = new DefaultListModel<>();
         for (Jugador j : casino.getJugadores()) {
@@ -226,14 +214,12 @@ public class ControladorJuego {
         ventanaConfig.getLstJUgadoresRegistrados().setModel(modelo);
     }
 
-    // Limpia los campos de ingreso de jugador
     private void limpiarCamposJugador() {
         ventanaConfig.getTxtNombreJugador().setText("");
         ventanaConfig.getTxtApodo().setText("");
         ventanaConfig.getCmbTipoJugador().setSelectedIndex(0);
     }
 
-    // Validación de apodo
     private boolean validarApodo(String apodo) {
         if (apodo.length() < 3 || apodo.length() > 10) return false;
         return apodo.matches("[a-zA-Z ]+");

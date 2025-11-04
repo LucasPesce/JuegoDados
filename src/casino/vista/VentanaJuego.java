@@ -1,6 +1,6 @@
 package casino.vista;
-import casino.modelo.JuegoDados; // Necesario para InfoTiroDTO
-import casino.modelo.Jugador;    // Necesario para los parámetros de los métodos
+import casino.modelo.JuegoDados; 
+import casino.modelo.Jugador;    
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -26,11 +26,11 @@ public class VentanaJuego extends javax.swing.JFrame {
 
 
      public VentanaJuego() {
-        initComponents(); // Esto crea todos los componentes del diseñador
+        initComponents(); 
         this.setLocationRelativeTo(null);
+        this.setResizable(false); 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         
-        // Esta sección agrupa los componentes ya creados en listas para un fácil acceso.
         panelesJugadores = new ArrayList<>(Arrays.asList(jPanel1, jPanel2, jPanel3, jPanel4));
         lblsNombre = new ArrayList<>(Arrays.asList(lblNombreJ1, lblNombreJ2, lblNombreJ3, lblNombreJ4));
         lblsDinero = new ArrayList<>(Arrays.asList(lblDineroJ1, lblDineroJ2, lblDineroJ3, lblDineroJ4));
@@ -40,72 +40,46 @@ public class VentanaJuego extends javax.swing.JFrame {
         lblsEstado = new ArrayList<>(Arrays.asList(lblEstadoJ1, lblEstadoJ2, lblEstadoJ3, lblEstadoJ4));
     }
     
-    //================================================================ CONSIGNA 3
-    /**
-     * Prepara la interfaz para un número específico de jugadores,
-     * ocultando los paneles que no se usarán.
-     * @param jugadores La lista de jugadores en la partida.
-     */
     public void prepararInterfazJugadores(List<Jugador> jugadores) {
         // Oculta todos los paneles primero
         for (JPanel panel : panelesJugadores) {
             panel.setVisible(false);
         }
-
-        // Muestra y configura solo los paneles necesarios
         for (int i = 0; i < jugadores.size(); i++) {
             Jugador jugador = jugadores.get(i);
             JPanel panel = panelesJugadores.get(i);
 
             panel.setVisible(true);
-            // Establece el nombre del jugador en el título del borde
             panel.setBorder(BorderFactory.createTitledBorder(jugador.getNombreConTipo()));
-
-            // Actualiza la información inicial
             lblsNombre.get(i).setText("Nombre: " + jugador.getNombre());
             lblsDinero.get(i).setText("Dinero: $" + jugador.getDinero());
             lblsVictorias.get(i).setText("Victorias: " + jugador.getPartidasGanadas());
         }
     }
 
-    /**
-     * Actualiza la información de un jugador específico en la interfaz.
-     * @param indice El índice del jugador en la lista (0, 1, 2, o 3).
-     * @param jugador El objeto Jugador con los datos actualizados.
-     * @param infoTiro El DTO con la información de la tirada.
-     * @param esGanador Si el jugador ganó la ronda.
-     */
     public void actualizarPanelJugador(int indice, Jugador jugador, JuegoDados.InfoTiroDTO infoTiro, boolean esGanador) {
         if (indice >= panelesJugadores.size()) return; // Medida de seguridad
 
         JPanel panel = panelesJugadores.get(indice);
-        
-        // Resetea el color de fondo del panel
-        // Se usa getParent() para obtener el color de fondo del contenedor (pnlJugadores)
-        // y mantener la consistencia visual.
         panel.setBackground(panel.getParent().getBackground());
 
-        // Actualiza los textos de los labels
         lblsDinero.get(indice).setText("Dinero: $" + jugador.getDinero());
         lblsVictorias.get(indice).setText("Victorias: " + jugador.getPartidasGanadas());
         lblsApuesta.get(indice).setText("Apuesta: $" + infoTiro.apuesta);
         lblsDados.get(indice).setText("Dados: " + infoTiro.tiro1 + " + " + infoTiro.tiro2 + " = " + infoTiro.suma);
 
         JLabel estadoLabel = lblsEstado.get(indice);
-        estadoLabel.setText(" "); // Limpia el estado anterior
-
-        // Aplica efectos visuales según el resultado de la ronda
+        estadoLabel.setText(" "); 
+        
         if (esGanador) {
-            panel.setBackground(new java.awt.Color(144, 238, 144)); // Verde claro
+            panel.setBackground(new java.awt.Color(144, 238, 144)); 
             estadoLabel.setText("¡GANADOR!");
         }
 
         if (infoTiro.fueConfundido) {
-            // Si no fue ganador, se aplica el color de "confundido"
             if (!esGanador) {
                 panel.setBackground(new java.awt.Color(255, 204, 204)); // Rojo claro
             }
-            // El texto siempre se actualiza para mostrar el estado
             estadoLabel.setText("¡CONFUNDIDO!");
         }
     }
@@ -119,7 +93,7 @@ public class VentanaJuego extends javax.swing.JFrame {
     public void limpiarLog() {
         txtLogEventos.setText("");
     }
-    // =========================================================
+    
     public JButton getBtnAvanzar() {
         return btnAvanzar;
     }
